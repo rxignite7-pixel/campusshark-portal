@@ -1,32 +1,37 @@
 import React, { useState } from 'react';
-import { Lock, Mail, Key, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Key, Mail, Lock, X, ShieldAlert, Sparkles } from 'lucide-react';
+import { adminLoginAPI } from '../../config/api';
 
 export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [email, setEmail] = useState('admin@campusshark.in');
   const [password, setPassword] = useState('admin123');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Verify admin credentials
-    if (email.trim().toLowerCase() === 'admin@campusshark.in' && password === 'admin123') {
-      setErrorMsg('');
-      onLoginSuccess({
-        email: email,
-        role: 'SuperAdmin',
-        name: 'CampusShark Admin'
-      });
-    } else {
-      setErrorMsg('Invalid email or password! Demo Credentials: admin@campusshark.in / admin123');
-    }
-  };
-
-  const handleQuickFill = () => {
+  const handleFillCredentials = () => {
     setEmail('admin@campusshark.in');
     setPassword('admin123');
-    setErrorMsg('');
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const apiRes = await adminLoginAPI(email, password);
+    setLoading(false);
+
+    if (apiRes && apiRes.success) {
+      onLoginSuccess(apiRes.user, apiRes.token);
+    } else if (email === 'admin@campusshark.in' && password === 'admin123') {
+      // Fallback local auth if backend offline
+      onLoginSuccess({ email: 'admin@campusshark.in', role: 'SuperAdmin' }, 'fallback-token-123');
+    } else {
+      setError(apiRes?.error || 'Invalid Admin Email or Password.');
+    }
   };
 
   return (
@@ -34,20 +39,20 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
       <div 
         className="admin-drawer" 
         onClick={(e) => e.stopPropagation()} 
-        style={{ maxWidth: '440px', padding: '36px' }}
+        style={{ maxWidth: '420px', padding: '28px', height: 'auto', borderRadius: 'var(--radius-lg)' }}
       >
-        <div className="drawer-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: 'rgba(139, 92, 246, 0.2)', padding: '10px', borderRadius: '12px', color: 'var(--accent)' }}>
-              <Lock size={22} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '8px', borderRadius: '10px', color: 'var(--primary)' }}>
+              <Key size={22} />
             </div>
             <div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: '800', color: '#fff' }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.2rem', fontWeight: '800', color: '#fff' }}>
                 Admin Portal Login
               </h3>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Authenticate to manage coupons & event schedules
-              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                CampusShark Control Center
+              </p>
             </div>
           </div>
           <button type="button" className="btn-close-drawer" onClick={onClose}>
@@ -55,27 +60,24 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
           </button>
         </div>
 
-        {/* Credentials Quick Banner */}
-        <div style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '24px', fontSize: '0.82rem' }}>
-          <div style={{ fontWeight: '700', color: 'var(--primary)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>🔑 Demo Admin Credentials</span>
-            <button 
-              type="button"
-              onClick={handleQuickFill}
-              style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              Fill Credentials
-            </button>
+        {/* Quick Credentials Auto-Fill Button */}
+        <div style={{ marginBottom: '18px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--accent-amber)', fontWeight: '700' }}>Demo Credentials Ready</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>admin@campusshark.in / admin123</div>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Email: admin@campusshark.in <br />
-            Password: admin123
-          </div>
+          <button
+            type="button"
+            onClick={handleFillCredentials}
+            style={{ background: 'var(--accent-amber)', color: '#000', border: 'none', padding: '4px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <Sparkles size={12} /> Auto-Fill
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="gf-field-group" style={{ marginBottom: '18px' }}>
-            <label className="gf-label">Admin Email Address</label>
+          <div className="gf-field-group" style={{ marginBottom: '14px' }}>
+            <label className="gf-label" style={{ fontSize: '0.8rem' }}>Admin Email</label>
             <div className="gf-input-wrapper">
               <Mail className="gf-input-icon" size={18} />
               <input
@@ -89,8 +91,8 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
             </div>
           </div>
 
-          <div className="gf-field-group" style={{ marginBottom: '24px' }}>
-            <label className="gf-label">Admin Password</label>
+          <div className="gf-field-group" style={{ marginBottom: '18px' }}>
+            <label className="gf-label" style={{ fontSize: '0.8rem' }}>Password</label>
             <div className="gf-input-wrapper">
               <Lock className="gf-input-icon" size={18} />
               <input
@@ -104,19 +106,20 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
             </div>
           </div>
 
-          {errorMsg && (
-            <div style={{ color: 'var(--accent-rose)', fontSize: '0.82rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertCircle size={16} /> {errorMsg}
+          {error && (
+            <div style={{ background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--accent-rose)', padding: '10px', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={16} />
+              <span>{error}</span>
             </div>
           )}
 
           <button 
             type="submit" 
             className="btn-primary" 
-            style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
+            disabled={loading}
+            style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '0.95rem' }}
           >
-            <Key size={18} />
-            <span>Login to Admin Dashboard</span>
+            {loading ? 'Authenticating...' : 'Login to Admin Dashboard'}
           </button>
         </form>
       </div>

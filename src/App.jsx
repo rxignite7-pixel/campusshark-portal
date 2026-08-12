@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import AdminLoginModal from './components/common/AdminLoginModal';
@@ -9,6 +9,19 @@ import TeamForm from './components/form/TeamForm';
 import EventCouponSelection from './components/events/EventCouponSelection';
 import TicketPass from './components/pass/TicketPass';
 import { EVENTS_DATA, INITIAL_ADMIN_COUPONS, INITIAL_SCHEDULE_DATA } from './data/eventsAndCoupons';
+import { 
+  submitRegistration, 
+  getEventsAPI, 
+  getCouponsAPI, 
+  getScheduleAPI,
+  createCouponAPI,
+  deleteCouponAPI,
+  createEventAPI,
+  deleteEventAPI,
+  createScheduleAPI,
+  deleteScheduleAPI,
+  adminLoginAPI
+} from './config/api';
 
 export default function App() {
   const [currentStep, setCurrentStep] = useState(0); // 0: Hero, 1: Form, 2: Event & Coupon, 3: Ticket Pass
@@ -16,16 +29,13 @@ export default function App() {
   // Admin Auth State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
+  const [adminToken, setAdminToken] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
 
-  // Dynamic Events List (Managed by Admin Dashboard)
+  // Dynamic MongoDB Collections State
   const [eventsList, setEventsList] = useState(EVENTS_DATA);
-
-  // Admin Managed Coupons List (Tied to events or global)
   const [adminCoupons, setAdminCoupons] = useState(INITIAL_ADMIN_COUPONS);
-
-  // Admin Managed Live Website Schedule Cards
   const [scheduleCards, setScheduleCards] = useState(INITIAL_SCHEDULE_DATA);
 
   // Individual Founder & Startup Registration State
@@ -42,9 +52,32 @@ export default function App() {
     pitchDeckFile: null
   });
 
-  // Selected event (default to CampusShark E-Cell Flagship Event)
+  // Selected event
   const [selectedEvent, setSelectedEvent] = useState(EVENTS_DATA[0]);
   const [appliedCoupon, setAppliedCoupon] = useState(INITIAL_ADMIN_COUPONS[0]);
+
+  // Fetch initial collections from MongoDB API on mount
+  useEffect(() => {
+    async function loadData() {
+      const dbEvents = await getEventsAPI();
+      if (dbEvents && dbEvents.length > 0) {
+        setEventsList(dbEvents);
+        setSelectedEvent(dbEvents[0]);
+      }
+
+      const dbCoupons = await getCouponsAPI();
+      if (dbCoupons && dbCoupons.length > 0) {
+        setAdminCoupons(dbCoupons);
+        setAppliedCoupon(dbCoupons[0]);
+      }
+
+      const dbSchedule = await getScheduleAPI();
+      if (dbSchedule && dbSchedule.length > 0) {
+        setScheduleCards(dbSchedule);
+      }
+    }
+    loadData();
+  }, []);
 
   const navigateToStep = (step) => {
     setCurrentStep(step);
@@ -60,7 +93,18 @@ export default function App() {
     navigateToStep(2);
   };
 
-  const handleCompleteRegistration = () => {
+  // Submit Registration to MongoDB Atlas
+  const handleCompleteRegistration = async () => {
+    const payload = {
+      ...teamData,
+      eventId: selectedEvent.id || selectedEvent._id,
+      eventTitle: selectedEvent.title,
+      appliedCoupon: appliedCoupon ? appliedCoupon.code : 'NONE',
+      amountPaid: 150
+    };
+
+    // Post to MongoDB backend
+    await submitRegistration(payload);
     navigateToStep(3);
   };
 
@@ -77,9 +121,10 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = async (user, token) => {
     setIsAdminLoggedIn(true);
     setAdminUser(user);
+    setAdminToken(token);
     setIsLoginModalOpen(false);
     setIsDashboardModalOpen(true);
   };
@@ -87,44 +132,64 @@ export default function App() {
   const handleAdminLogout = () => {
     setIsAdminLoggedIn(false);
     setAdminUser(null);
+    setAdminToken(null);
     setIsDashboardModalOpen(false);
   };
 
   // Dynamic Event Track Handlers
-  const handleAddEvent = (newEvent) => {
+  const handleAddEvent = async (newEvent) => {
     setEventsList(prev => [newEvent, ...prev]);
+    if (adminToken) {
+      await createEventAPI(newEvent, adminToken);
+    }
   };
 
-  const handleDeleteEvent = (eventIdToDelete) => {
-    if (eventsList.length <= 1) return; // Retain at least 1 event
-    const updatedEvents = eventsList.filter(e => e.id !== eventIdToDelete);
+  const handleDeleteEvent = async (eventIdToDelete) => {
+    if (eventsList.length <= 1) return;
+    const updatedEvents = eventsList.filter(e => (e.id || e._id) !== eventIdToDelete);
     setEventsList(updatedEvents);
     
-    // If selected event was deleted, select first remaining event
-    if (selectedEvent && selectedEvent.id === eventIdToDelete) {
+    if (selectedEvent && (selectedEvent.id || selectedEvent._id) === eventIdToDelete) {
       setSelectedEvent(updatedEvents[0]);
+    }
+
+    if (adminToken) {
+      await deleteEventAPI(eventIdToDelete, adminToken);
     }
   };
 
   // Coupon Handlers
-  const handleAddAdminCoupon = (newCoupon) => {
+  const handleAddAdminCoupon = async (newCoupon) => {
     setAdminCoupons(prev => [newCoupon, ...prev]);
+    if (adminToken) {
+      await createCouponAPI(newCoupon, adminToken);
+    }
   };
 
-  const handleDeleteAdminCoupon = (codeToDelete) => {
+  const handleDeleteAdminCoupon = async (codeToDelete) => {
     setAdminCoupons(prev => prev.filter(c => c.code !== codeToDelete));
     if (appliedCoupon && appliedCoupon.code === codeToDelete) {
       setAppliedCoupon(null);
     }
+
+    if (adminToken) {
+      await deleteCouponAPI(codeToDelete, adminToken);
+    }
   };
 
   // Schedule Card Handlers
-  const handleAddScheduleCard = (newCard) => {
+  const handleAddScheduleCard = async (newCard) => {
     setScheduleCards(prev => [newCard, ...prev]);
+    if (adminToken) {
+      await createScheduleAPI(newCard, adminToken);
+    }
   };
 
-  const handleDeleteScheduleCard = (cardId) => {
-    setScheduleCards(prev => prev.filter(c => c.id !== cardId));
+  const handleDeleteScheduleCard = async (cardId) => {
+    setScheduleCards(prev => prev.filter(c => (c.id || c._id) !== cardId));
+    if (adminToken) {
+      await deleteScheduleAPI(cardId, adminToken);
+    }
   };
 
   return (
@@ -151,7 +216,7 @@ export default function App() {
             <>
               <LandingHero onStartRegistration={handleStartRegistration} />
               
-              {/* Dynamic Animated Schedule Section (Admin Managed) */}
+              {/* Dynamic Animated Schedule Section (MongoDB & Admin Managed) */}
               <ScheduleSection scheduleCards={scheduleCards} />
             </>
           )}
