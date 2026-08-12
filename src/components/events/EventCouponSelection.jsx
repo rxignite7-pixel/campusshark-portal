@@ -86,7 +86,7 @@ export default function EventCouponSelection({
     c => c.eventId === 'ALL' || c.eventId === activeEvent.id
   );
 
-  // Rock-solid Direct Razorpay Modal Launcher
+  // UPI Dedicated Razorpay Modal Launcher (Google Pay, PhonePe, Paytm, BHIM, VPA)
   const handlePayAmount = async () => {
     setIsProcessingPayment(true);
 
@@ -107,7 +107,7 @@ export default function EventCouponSelection({
       amountPaid: finalTotal
     };
 
-    // Helper to open Razorpay Modal Popup
+    // Helper to open Razorpay Modal Popup targeting UPI apps (PhonePe, GPay, Paytm)
     const launchRazorpayModal = (orderId = null, keyId = RAZORPAY_KEY) => {
       const options = {
         key: keyId || RAZORPAY_KEY,
@@ -117,6 +117,38 @@ export default function EventCouponSelection({
         description: `Registration Fee for ${activeEvent.title}`,
         image: 'https://cdn-icons-png.flaticon.com/512/1041/1041883.png',
         order_id: orderId,
+        prefill: {
+          name: teamData.fullName || '',
+          email: teamData.email || '',
+          contact: teamData.phone || '',
+          method: 'upi' // Default to UPI payment method
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI Apps (Google Pay, PhonePe, Paytm, BHIM)',
+                instruments: [
+                  {
+                    method: 'upi'
+                  }
+                ]
+              }
+            },
+            sequence: ['block.upi'],
+            preferences: {
+              show_default_blocks: false // Hides cards and wallets to show UPI Apps directly!
+            }
+          }
+        },
+        notes: {
+          startupName: teamData.startupName || '',
+          sector: teamData.sector || '',
+          appliedCoupon: appliedCoupon ? appliedCoupon.code : 'NONE'
+        },
+        theme: {
+          color: '#6366f1'
+        },
         handler: async function (response) {
           // Verify & Save to MongoDB Atlas
           if (response.razorpay_payment_id) {
@@ -132,19 +164,6 @@ export default function EventCouponSelection({
 
           setIsProcessingPayment(false);
           onCompleteRegistration();
-        },
-        prefill: {
-          name: teamData.fullName || '',
-          email: teamData.email || '',
-          contact: teamData.phone || ''
-        },
-        notes: {
-          startupName: teamData.startupName || '',
-          sector: teamData.sector || '',
-          appliedCoupon: appliedCoupon ? appliedCoupon.code : 'NONE'
-        },
-        theme: {
-          color: '#6366f1'
         },
         modal: {
           ondismiss: function () {
@@ -181,11 +200,11 @@ export default function EventCouponSelection({
       if (orderRes && orderRes.order) {
         launchRazorpayModal(orderRes.order.id, orderRes.key_id);
       } else {
-        // Direct Client-side Razorpay Launch (As fallback if server port 5000 is waking up)
+        // Direct Client-side UPI Razorpay Launch
         launchRazorpayModal(null, RAZORPAY_KEY);
       }
     } catch (err) {
-      console.warn('Backend order creation offline, opening direct Razorpay modal:', err);
+      console.warn('Backend order creation offline, opening direct UPI Razorpay modal:', err);
       launchRazorpayModal(null, RAZORPAY_KEY);
     }
   };
@@ -346,7 +365,7 @@ export default function EventCouponSelection({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Official Razorpay Pay Amount CTA Button */}
+            {/* Dedicated UPI Razorpay Pay Amount CTA Button */}
             <button 
               type="button" 
               className="btn-primary" 
@@ -357,12 +376,12 @@ export default function EventCouponSelection({
               {isProcessingPayment ? (
                 <>
                   <Loader2 size={18} className="spin-icon" />
-                  <span>Launching Razorpay Checkout...</span>
+                  <span>Opening UPI Payment Apps...</span>
                 </>
               ) : (
                 <>
                   <CreditCard size={18} />
-                  <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
+                  <span>Pay Amount via UPI (₹{finalTotal.toLocaleString('en-IN')})</span>
                   <ArrowRight size={18} />
                 </>
               )}
