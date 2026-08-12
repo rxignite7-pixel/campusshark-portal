@@ -1,13 +1,24 @@
 import React from 'react';
-import { Sparkles, Key, Lock, UserCheck } from 'lucide-react';
+import { Key, Lock, UserCheck } from 'lucide-react';
 
 export default function Header({ currentStep, onStepClick, onOpenAdminDrawer, isAdminLoggedIn, adminUser }) {
   return (
     <header className="navbar">
       <div className="brand-logo" onClick={() => onStepClick(0)} title="CampusShark Home">
-        <div className="logo-badge">
-          <Sparkles size={22} color="#fff" />
-        </div>
+        <img 
+          src="/logo.jpg" 
+          alt="Rx Ignite Logo" 
+          style={{ 
+            width: '42px', 
+            height: '42px', 
+            borderRadius: '50%', 
+            objectFit: 'cover', 
+            border: '2px solid rgba(245, 158, 11, 0.7)',
+            boxShadow: '0 0 14px rgba(245, 158, 11, 0.4)',
+            transition: 'transform 0.3s ease'
+          }} 
+          className="brand-logo-img"
+        />
         <div className="logo-text">
           Campus<span>Shark</span>
         </div>
