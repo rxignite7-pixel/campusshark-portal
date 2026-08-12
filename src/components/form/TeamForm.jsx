@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Phone, Mail, MapPin, Building2, Globe, FileText, Upload, CheckCircle, AlertCircle, Sparkles, Rocket, Layers } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, Globe, FileText, Upload, CheckCircle, AlertCircle, Rocket } from 'lucide-react';
 
 const SECTOR_OPTIONS = [
   'AI / Machine Learning',
@@ -76,22 +76,6 @@ export default function TeamForm({ initialData, onSubmitForm }) {
     }
   };
 
-  const fillSampleData = () => {
-    setFormData({
-      fullName: 'Jordan Taylor',
-      email: 'jordan.taylor@stanford.edu',
-      phone: '+91 98765 43210',
-      city: 'Mumbai, MH',
-      startupName: 'Apex AI Labs',
-      sector: 'AI / Machine Learning',
-      stage: 'Prototype / MVP',
-      website: 'https://apex-ai.tech',
-      pitchDeckName: 'Apex_AI_Pitch_Deck_v2.pdf',
-      pitchDeckFile: null
-    });
-    setErrors({});
-  };
-
   const validate = () => {
     const newErrors = {};
 
@@ -124,45 +108,22 @@ export default function TeamForm({ initialData, onSubmitForm }) {
       
       {/* Form Header Card */}
       <div className="gf-card top-header-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h1 className="gf-title">CampusShark Individual Startup Registration</h1>
-            <p className="gf-subtitle">
-              Register your startup for the official CampusShark E-Cell Summit. Fill in your personal details, startup profile, and pitch deck.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={fillSampleData}
-            style={{
-              background: 'rgba(139, 92, 246, 0.15)',
-              border: '1px solid var(--accent)',
-              color: 'var(--accent)',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              fontSize: '0.8rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Sparkles size={14} />
-            <span>Auto-Fill Sample Startup</span>
-          </button>
+        <div>
+          <h1 className="gf-title">CampusShark Individual Member & Startup Registration</h1>
+          <p className="gf-subtitle">
+            Register for the official CampusShark E-Cell Summit. Fill in your member details, startup profile, and pitch deck.
+          </p>
         </div>
 
         <div className="gf-required-note">* Indicates required field</div>
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Section 1: Personal Founder Details */}
+        {/* Section 1: Member Details */}
         <div className="gf-card">
           <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--gf-purple-light)' }}>
             <User size={20} />
-            <span>Section 1 of 2: Founder Details</span>
+            <span>Section 1 of 2: Member Details</span>
           </h2>
 
           <div className="form-grid-2">
@@ -215,7 +176,7 @@ export default function TeamForm({ initialData, onSubmitForm }) {
                 <input
                   type="email"
                   className={`gf-input ${errors.email ? 'gf-input-error' : ''}`}
-                  placeholder="e.g. jordan.founder@startup.com"
+                  placeholder="e.g. jordan.member@startup.com"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                 />

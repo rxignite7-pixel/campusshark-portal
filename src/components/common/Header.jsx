@@ -20,7 +20,7 @@ export default function Header({ currentStep, onStepClick, onOpenAdminDrawer, is
           style={{ cursor: currentStep > 1 ? 'pointer' : 'default' }}
         >
           <div className="step-num">1</div>
-          <span>Founder Form</span>
+          <span>Member Form</span>
         </div>
 
         <div className="step-divider" />

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import confetti from 'canvas-confetti';
-import { CheckCircle2, Printer, RefreshCw, MapPin, Calendar, Tag, Award, Rocket, Globe, FileText } from 'lucide-react';
+import { CheckCircle2, Printer, RefreshCw, Calendar, Tag, Award, Rocket, FileText } from 'lucide-react';
 
 export default function TicketPass({ teamData, selectedEvent, appliedCoupon, onReset }) {
   const qrCanvasRef = useRef(null);
@@ -23,7 +23,7 @@ export default function TicketPass({ teamData, selectedEvent, appliedCoupon, onR
     if (qrCanvasRef.current) {
       const qrPayload = JSON.stringify({
         ticketId: ticketId,
-        founderName: teamData.fullName,
+        memberName: teamData.fullName,
         startupName: teamData.startupName,
         sector: teamData.sector,
         stage: teamData.stage,
@@ -57,7 +57,7 @@ export default function TicketPass({ teamData, selectedEvent, appliedCoupon, onR
           <CheckCircle2 size={42} />
         </div>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.4rem', fontWeight: '800', color: '#fff', marginBottom: '8px' }}>
-          Founder Registration Confirmed!
+          Member Registration Confirmed!
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
           Your individual holographic entry pass for <strong>{selectedEvent.title}</strong> is active.
@@ -69,19 +69,19 @@ export default function TicketPass({ teamData, selectedEvent, appliedCoupon, onR
         <div className="ticket-header">
           <div>
             <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Award size={14} color="var(--accent-amber)" /> CAMPUSSHARK FOUNDER PASS
+              <Award size={14} color="var(--accent-amber)" /> CAMPUSSHARK MEMBER PASS
             </div>
             <div className="ticket-event-title">{selectedEvent.title}</div>
           </div>
           <span className="ticket-pass-type">
-            {appliedCoupon ? `${appliedCoupon.code} VIP PASS` : 'FOUNDER PASS'}
+            {appliedCoupon ? `${appliedCoupon.code} VIP PASS` : 'MEMBER PASS'}
           </span>
         </div>
 
         <div className="ticket-body">
           <div className="ticket-details">
             <div className="detail-block">
-              <label>Founder Name & Contact</label>
+              <label>Member Name & Contact</label>
               <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#fff' }}>
                 {teamData.fullName}
               </div>
@@ -158,7 +158,7 @@ export default function TicketPass({ teamData, selectedEvent, appliedCoupon, onR
 
         <button type="button" className="btn-secondary" onClick={onReset}>
           <RefreshCw size={16} />
-          <span>Register Another Startup</span>
+          <span>Register Another Member</span>
         </button>
       </div>
     </div>

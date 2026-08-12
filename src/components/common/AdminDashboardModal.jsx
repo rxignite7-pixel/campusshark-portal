@@ -205,7 +205,7 @@ export default function AdminDashboardModal({
             }}
           >
             <Users size={16} />
-            <span>Paid Founders ({registrationsList.length})</span>
+            <span>Paid Members ({registrationsList.length})</span>
           </button>
 
           <button

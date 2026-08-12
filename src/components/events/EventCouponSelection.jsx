@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import EventCard from './EventCard';
-import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, Key, CheckCircle, Rocket, FileText } from 'lucide-react';
+import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard } from 'lucide-react';
 
 export default function EventCouponSelection({ 
   teamData, 
@@ -18,13 +18,13 @@ export default function EventCouponSelection({
   const [couponError, setCouponError] = useState('');
 
   const activeEvent = selectedEvent || eventsList[0] || {};
-  const founderName = teamData?.fullName || 'Jordan Taylor';
+  const memberName = teamData?.fullName || 'Jordan Taylor';
   const startupName = teamData?.startupName || 'CampusShark Startup';
 
   const handleApplyCoupon = (codeToApply) => {
     const code = (codeToApply || couponInput).trim().toUpperCase();
     if (!code) {
-      setCouponError('Please enter an admin coupon code.');
+      setCouponError('Please enter a promo coupon code.');
       return;
     }
 
@@ -48,9 +48,9 @@ export default function EventCouponSelection({
     setCouponError('');
   };
 
-  // Calculation Math for Individual Founder in INR (₹)
+  // Calculation Math for Individual Member in INR (₹)
   const basePricePerPerson = activeEvent.pricePerMember || 250;
-  const subtotal = basePricePerPerson; // 1 Founder
+  const subtotal = basePricePerPerson; // 1 Member
   
   let discountAmount = 0;
   if (appliedCoupon) {
@@ -75,23 +75,23 @@ export default function EventCouponSelection({
         <div style={{ marginBottom: '24px' }}>
           <h2 className="section-heading">Select Event Track</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
-            Select the official summit track for <strong>"{startupName}"</strong> (Founder: {founderName}).
+            Select the official summit track for <strong>"{startupName}"</strong> (Member: {memberName}).
           </p>
         </div>
 
         <div className="events-grid">
           {eventsList.map((evt) => (
             <EventCard
-              key={evt.id}
+              key={evt.id || evt._id}
               evt={evt}
-              isSelected={activeEvent.id === evt.id}
+              isSelected={activeEvent.id === evt.id || activeEvent._id === evt._id}
               onSelect={() => onSelectEvent(evt)}
             />
           ))}
         </div>
       </div>
 
-      {/* Right Column: Clean, Structured Registration Summary & Admin Coupon Box */}
+      {/* Right Column: Clean, Structured Registration Summary & Promo Coupon Box */}
       <div className="summary-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-light)' }}>
           <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -99,7 +99,7 @@ export default function EventCouponSelection({
             <span>Registration Summary</span>
           </h3>
           <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Rocket size={12} /> Individual Founder
+            <Rocket size={12} /> Individual Member
           </span>
         </div>
 
@@ -107,10 +107,10 @@ export default function EventCouponSelection({
         <div className="summary-team-pill" style={{ marginBottom: '20px' }}>
           <div className="team-pill-name">{startupName}</div>
           <div className="team-pill-sub">
-            Founder: {founderName} ({teamData?.city || 'India'})
+            Member: {memberName} ({teamData?.city || 'India'})
           </div>
           <div className="team-pill-sub" style={{ marginTop: '2px' }}>
-            Sector: <strong style={{ color: '#fff' }}>{teamData?.sector || 'AI/SaaS'}</strong> • Stage: {teamData?.stage || 'Prototype'}
+            Sector: <strong style={{ color: '#fff' }}>{teamData?.sector || 'AI/SaaS'}</strong> • Stage: {teamData?.stage || 'MVP'}
           </div>
           {teamData?.pitchDeckName && (
             <div className="team-pill-sub" style={{ marginTop: '4px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
@@ -119,20 +119,13 @@ export default function EventCouponSelection({
           )}
         </div>
 
-        {/* Structured Admin Promo Coupon Box */}
+        {/* Structured Admin Promo Coupon Box (Without Admin Dashboard Link) */}
         <div className="coupon-box" style={{ background: 'rgba(13, 18, 30, 0.85)', padding: '18px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: '700', color: '#fff' }}>
               <Tag size={16} color="var(--accent)" />
               <span>Admin Promo Coupon</span>
             </div>
-            <button 
-              type="button" 
-              onClick={onOpenAdminDrawer} 
-              style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}
-            >
-              <Key size={12} /> Admin Dashboard
-            </button>
           </div>
 
           {!appliedCoupon ? (
@@ -157,12 +150,12 @@ export default function EventCouponSelection({
               {applicableAdminCoupons.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginBottom: '6px' }}>
-                    Available Admin Codes:
+                    Available Promo Codes:
                   </div>
                   <div className="admin-coupons-badge-list">
                     {applicableAdminCoupons.map((c) => (
                       <button
-                        key={c.id || c.code}
+                        key={c.id || c._id || c.code}
                         type="button"
                         className="coupon-chip"
                         onClick={() => {
@@ -230,13 +223,15 @@ export default function EventCouponSelection({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Renamed CTA Button to "Pay Amount" */}
           <button 
             type="button" 
             className="btn-primary" 
             style={{ width: '100%', justifyContent: 'center' }}
             onClick={onCompleteRegistration}
           >
-            <span>Confirm & Claim Ticket Pass</span>
+            <CreditCard size={18} />
+            <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
             <ArrowRight size={18} />
           </button>
 
