@@ -15,12 +15,21 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-// 1. Razorpay: Create Payment Order
-export async function createRazorpayOrderAPI(amount, receipt) {
+// 0. Check Duplicate Registration API
+export async function checkDuplicateAPI(email, phone) {
+  return await fetchJson(`${API_BASE_URL}/api/check-duplicate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, phone })
+  });
+}
+
+// 1. Razorpay: Create Payment Order (Includes email & phone to check duplicate)
+export async function createRazorpayOrderAPI(amount, receipt, email, phone) {
   return await fetchJson(`${API_BASE_URL}/api/payment/create-order`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, receipt })
+    body: JSON.stringify({ amount, receipt, email, phone })
   });
 }
 

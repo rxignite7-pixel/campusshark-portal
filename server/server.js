@@ -45,8 +45,8 @@ mongoose.connect(MONGO_URI)
 // Schemas & Models
 const RegistrationSchema = new mongoose.Schema({
   fullName: String,
-  email: String,
-  phone: String,
+  email: { type: String, lowercase: true, trim: true },
+  phone: { type: String, trim: true },
   city: String,
   startupName: String,
   sector: String,
@@ -123,10 +123,53 @@ app.post('/api/admin/login', (req, res) => {
   return res.status(401).json({ error: 'Invalid admin credentials' });
 });
 
-// 2. Razorpay Create Payment Order
+// 2. Check for Duplicate Registration (By Email or Phone)
+app.post('/api/check-duplicate', async (req, res) => {
+  try {
+    const { email, phone } = req.body;
+    if (!email && !phone) return res.json({ isDuplicate: false });
+
+    const query = [];
+    if (email) query.push({ email: email.trim().toLowerCase() });
+    if (phone) query.push({ phone: phone.trim() });
+
+    const existingUser = await Registration.findOne({ $or: query });
+
+    if (existingUser) {
+      return res.json({
+        isDuplicate: true,
+        message: `User already exists! A registration with email "${existingUser.email}" or phone "${existingUser.phone}" is already registered.`,
+        existingUser
+      });
+    }
+
+    res.json({ isDuplicate: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Razorpay Create Payment Order (Prevents duplicates)
 app.post('/api/payment/create-order', async (req, res) => {
   try {
-    const { amount, currency = 'INR', receipt } = req.body;
+    const { amount, currency = 'INR', receipt, email, phone } = req.body;
+
+    // Check duplicate before creating order
+    if (email || phone) {
+      const query = [];
+      if (email) query.push({ email: email.trim().toLowerCase() });
+      if (phone) query.push({ phone: phone.trim() });
+
+      const existingUser = await Registration.findOne({ $or: query });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          isDuplicate: true,
+          error: `User already exists! Email "${existingUser.email}" or phone "${existingUser.phone}" has already completed registration.`
+        });
+      }
+    }
+
     const options = {
       amount: Math.round((amount || 150) * 100), // amount in paise
       currency,
@@ -143,7 +186,7 @@ app.post('/api/payment/create-order', async (req, res) => {
   }
 });
 
-// 3. Razorpay Verify Payment Signature & Save Registration to MongoDB
+// 4. Razorpay Verify Payment Signature & Save Registration to MongoDB
 app.post('/api/payment/verify', async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, registrationData } = req.body;
@@ -157,10 +200,28 @@ app.post('/api/payment/verify', async (req, res) => {
 
     const isAuthentic = expectedSignature === razorpay_signature;
 
+    // Check for duplicate prior to inserting
+    if (registrationData.email || registrationData.phone) {
+      const query = [];
+      if (registrationData.email) query.push({ email: registrationData.email.trim().toLowerCase() });
+      if (registrationData.phone) query.push({ phone: registrationData.phone.trim() });
+
+      const existingUser = await Registration.findOne({ $or: query });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          isDuplicate: true,
+          error: `User already exists! Email "${existingUser.email}" or phone "${existingUser.phone}" is already registered.`
+        });
+      }
+    }
+
     // Save to MongoDB Atlas
     const ticketId = `CSHARK2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const newReg = new Registration({
       ...registrationData,
+      email: registrationData.email ? registrationData.email.trim().toLowerCase() : '',
+      phone: registrationData.phone ? registrationData.phone.trim() : '',
       ticketId,
       razorpayOrderId: razorpay_order_id,
       razorpayPaymentId: razorpay_payment_id,
@@ -175,15 +236,34 @@ app.post('/api/payment/verify', async (req, res) => {
   }
 });
 
-// 4. Submit Founder/Member Registration Direct
+// 5. Submit Member Registration Direct (Prevents duplicates)
 app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
   try {
     const data = req.body;
+    
+    // Check duplicate
+    if (data.email || data.phone) {
+      const query = [];
+      if (data.email) query.push({ email: data.email.trim().toLowerCase() });
+      if (data.phone) query.push({ phone: data.phone.trim() });
+
+      const existingUser = await Registration.findOne({ $or: query });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          isDuplicate: true,
+          error: `User already exists! Email "${existingUser.email}" or phone "${existingUser.phone}" is already registered.`
+        });
+      }
+    }
+
     const pitchDeckUrl = req.file ? `/uploads/${req.file.filename}` : (data.pitchDeckName || 'Attached');
     const ticketId = `CSHARK2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     const newReg = new Registration({
       ...data,
+      email: data.email ? data.email.trim().toLowerCase() : '',
+      phone: data.phone ? data.phone.trim() : '',
       pitchDeckUrl,
       ticketId,
       paymentStatus: 'PAID'
@@ -196,7 +276,7 @@ app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
   }
 });
 
-// 5. Admin Fetch Paid Registrations
+// 6. Admin Fetch Paid Registrations
 app.get('/api/admin/registrations', async (req, res) => {
   try {
     const list = await Registration.find().sort({ createdAt: -1 });
@@ -206,7 +286,7 @@ app.get('/api/admin/registrations', async (req, res) => {
   }
 });
 
-// 6. Events Endpoints
+// 7. Events Endpoints
 app.get('/api/events', async (req, res) => {
   try {
     const events = await Event.find();
@@ -235,7 +315,7 @@ app.delete('/api/admin/events/:id', verifyAdminToken, async (req, res) => {
   }
 });
 
-// 7. Coupon Endpoints
+// 8. Coupon Endpoints
 app.get('/api/coupons', async (req, res) => {
   try {
     const coupons = await Coupon.find();
@@ -264,7 +344,7 @@ app.delete('/api/admin/coupons/:code', verifyAdminToken, async (req, res) => {
   }
 });
 
-// 8. Schedule Cards Endpoints
+// 9. Schedule Cards Endpoints
 app.get('/api/schedule', async (req, res) => {
   try {
     const schedule = await Schedule.find();
@@ -295,7 +375,7 @@ app.delete('/api/admin/schedule/:id', verifyAdminToken, async (req, res) => {
 
 // Root & Health check
 app.get('/', (req, res) => {
-  res.send('🚀 CampusShark API Server with Razorpay & MongoDB Atlas is Live!');
+  res.send('🚀 CampusShark API Server with Duplicate Validation, Razorpay & MongoDB Atlas is Live!');
 });
 
 app.listen(PORT, () => {

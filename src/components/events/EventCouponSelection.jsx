@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import EventCard from './EventCard';
+import DuplicateWarningModal from '../common/DuplicateWarningModal';
 import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard, Loader2 } from 'lucide-react';
-import { createRazorpayOrderAPI, verifyRazorpayPaymentAPI } from '../../config/api';
+import { createRazorpayOrderAPI, verifyRazorpayPaymentAPI, checkDuplicateAPI } from '../../config/api';
 
 export default function EventCouponSelection({ 
   teamData, 
@@ -18,6 +19,10 @@ export default function EventCouponSelection({
   const [couponInput, setCouponInput] = useState(appliedCoupon ? appliedCoupon.code : '');
   const [couponError, setCouponError] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Duplicate Warning Modal state
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateMessage, setDuplicateMessage] = useState('');
 
   const activeEvent = selectedEvent || eventsList[0] || {};
   const memberName = teamData?.fullName || 'Jordan Taylor';
@@ -70,9 +75,18 @@ export default function EventCouponSelection({
     c => c.eventId === 'ALL' || c.eventId === activeEvent.id
   );
 
-  // Razorpay Integration Handler
+  // Razorpay Integration Handler with Duplicate User Check
   const handlePayAmount = async () => {
     setIsProcessingPayment(true);
+
+    // 0. Pre-flight Check for Duplicate User (Email or Phone)
+    const dupCheck = await checkDuplicateAPI(teamData.email, teamData.phone);
+    if (dupCheck && dupCheck.isDuplicate) {
+      setIsProcessingPayment(false);
+      setDuplicateMessage(dupCheck.message);
+      setShowDuplicateModal(true);
+      return;
+    }
 
     const registrationPayload = {
       ...teamData,
@@ -84,8 +98,15 @@ export default function EventCouponSelection({
 
     try {
       // 1. Create Razorpay Order from backend
-      const orderRes = await createRazorpayOrderAPI(finalTotal, `receipt_${Date.now()}`);
+      const orderRes = await createRazorpayOrderAPI(finalTotal, `receipt_${Date.now()}`, teamData.email, teamData.phone);
       
+      if (orderRes && orderRes.isDuplicate) {
+        setIsProcessingPayment(false);
+        setDuplicateMessage(orderRes.error);
+        setShowDuplicateModal(true);
+        return;
+      }
+
       if (orderRes && orderRes.order && window.Razorpay) {
         const options = {
           key: orderRes.key_id || 'rzp_test_campusshark2026',
@@ -97,7 +118,7 @@ export default function EventCouponSelection({
           order_id: orderRes.order.id,
           handler: async function (response) {
             // Verify payment signature & save to MongoDB
-            await verifyRazorpayPaymentAPI({
+            const verifyRes = await verifyRazorpayPaymentAPI({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
@@ -105,6 +126,13 @@ export default function EventCouponSelection({
             });
 
             setIsProcessingPayment(false);
+
+            if (verifyRes && verifyRes.isDuplicate) {
+              setDuplicateMessage(verifyRes.error);
+              setShowDuplicateModal(true);
+              return;
+            }
+
             onCompleteRegistration();
           },
           prefill: {
@@ -130,7 +158,7 @@ export default function EventCouponSelection({
         });
         rzp.open();
       } else {
-        // Fallback simulation mode if Razorpay keys are not yet configured by user
+        // Fallback simulation mode if Razorpay keys are offline
         setTimeout(() => {
           setIsProcessingPayment(false);
           onCompleteRegistration();
@@ -144,193 +172,207 @@ export default function EventCouponSelection({
   };
 
   return (
-    <div className="selection-layout">
-      {/* Left Column: Events Grid */}
-      <div>
-        <div style={{ marginBottom: '24px' }}>
-          <h2 className="section-heading">Select Event Track</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
-            Select the official summit track for <strong>"{startupName}"</strong> (Member: {memberName}).
-          </p>
-        </div>
-
-        <div className="events-grid">
-          {eventsList.map((evt) => (
-            <EventCard
-              key={evt.id || evt._id}
-              evt={evt}
-              isSelected={activeEvent.id === evt.id || activeEvent._id === evt._id}
-              onSelect={() => onSelectEvent(evt)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Right Column: Clean, Structured Registration Summary & Promo Coupon Box */}
-      <div className="summary-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-light)' }}>
-          <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={20} color="var(--primary)" />
-            <span>Registration Summary</span>
-          </h3>
-          <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Rocket size={12} /> Individual Member
-          </span>
-        </div>
-
-        {/* Startup Overview Pill */}
-        <div className="summary-team-pill" style={{ marginBottom: '20px' }}>
-          <div className="team-pill-name">{startupName}</div>
-          <div className="team-pill-sub">
-            Member: {memberName} ({teamData?.city || 'India'})
-          </div>
-          <div className="team-pill-sub" style={{ marginTop: '2px' }}>
-            Sector: <strong style={{ color: '#fff' }}>{teamData?.sector || 'AI/SaaS'}</strong> • Stage: {teamData?.stage || 'MVP'}
-          </div>
-          {teamData?.pitchDeckName && (
-            <div className="team-pill-sub" style={{ marginTop: '4px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
-              <FileText size={12} /> Pitch Deck: {teamData.pitchDeckName}
-            </div>
-          )}
-        </div>
-
-        {/* Structured Admin Promo Coupon Box */}
-        <div className="coupon-box" style={{ background: 'rgba(13, 18, 30, 0.85)', padding: '18px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: '700', color: '#fff' }}>
-              <Tag size={16} color="var(--accent)" />
-              <span>Admin Promo Coupon</span>
-            </div>
+    <>
+      <div className="selection-layout">
+        {/* Left Column: Events Grid */}
+        <div>
+          <div style={{ marginBottom: '24px' }}>
+            <h2 className="section-heading">Select Event Track</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
+              Select the official summit track for <strong>"{startupName}"</strong> (Member: {memberName}).
+            </p>
           </div>
 
-          {!appliedCoupon ? (
-            <div>
-              <div className="coupon-input-group">
-                <input
-                  type="text"
-                  className="coupon-input"
-                  placeholder="Enter Code (e.g. ECELL100)"
-                  value={couponInput}
-                  onChange={(e) => {
-                    setCouponInput(e.target.value.toUpperCase());
-                    setCouponError('');
-                  }}
-                />
-                <button type="button" className="btn-apply-coupon" onClick={() => handleApplyCoupon()}>
-                  Apply
-                </button>
-              </div>
-
-              {/* Active Admin Coupons Badges */}
-              {applicableAdminCoupons.length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginBottom: '6px' }}>
-                    Available Promo Codes:
-                  </div>
-                  <div className="admin-coupons-badge-list">
-                    {applicableAdminCoupons.map((c) => (
-                      <button
-                        key={c.id || c._id || c.code}
-                        type="button"
-                        className="coupon-chip"
-                        onClick={() => {
-                          setCouponInput(c.code);
-                          handleApplyCoupon(c.code);
-                        }}
-                      >
-                        <Sparkles size={12} />
-                        {c.code} ({c.badge})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {couponError && (
-                <div style={{ color: 'var(--accent-rose)', fontSize: '0.8rem', marginTop: '8px' }}>
-                  {couponError}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="applied-coupon-banner">
-              <div>
-                <div style={{ fontSize: '0.88rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <CheckCircle size={16} color="var(--accent-emerald)" />
-                  <span>{appliedCoupon.code} APPLIED</span>
-                </div>
-                <div style={{ fontSize: '0.76rem', opacity: 0.9, marginTop: '2px' }}>
-                  {appliedCoupon.description}
-                </div>
-              </div>
-              <button 
-                type="button" 
-                onClick={handleRemoveCoupon} 
-                title="Remove Coupon"
-                style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: '4px' }}
-              >
-                <XCircle size={18} />
-              </button>
-            </div>
-          )}
+          <div className="events-grid">
+            {eventsList.map((evt) => (
+              <EventCard
+                key={evt.id || evt._id}
+                evt={evt}
+                isSelected={activeEvent.id === evt.id || activeEvent._id === evt._id}
+                onSelect={() => onSelectEvent(evt)}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Pricing Breakdown Table in INR (₹) */}
-        <div className="price-table" style={{ marginBottom: '24px' }}>
-          <div className="price-row">
-            <span>Individual Registration Fee</span>
-            <span>₹{subtotal.toLocaleString('en-IN')}</span>
-          </div>
-
-          {appliedCoupon && (
-            <div className="price-row discount">
-              <span>Admin Coupon Discount ({appliedCoupon.badge})</span>
-              <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
-            </div>
-          )}
-
-          <div className="price-row total" style={{ paddingTop: '14px', borderTop: '1px solid var(--border-light)' }}>
-            <span>Total Payable</span>
-            <span style={{ color: 'var(--accent-emerald)', fontSize: '1.25rem', fontFamily: 'var(--font-heading)' }}>
-              ₹{finalTotal.toLocaleString('en-IN')} INR
+        {/* Right Column: Clean, Structured Registration Summary & Promo Coupon Box */}
+        <div className="summary-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={20} color="var(--primary)" />
+              <span>Registration Summary</span>
+            </h3>
+            <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Rocket size={12} /> Individual Member
             </span>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Official Razorpay Pay Amount CTA Button */}
-          <button 
-            type="button" 
-            className="btn-primary" 
-            style={{ width: '100%', justifyContent: 'center' }}
-            disabled={isProcessingPayment}
-            onClick={handlePayAmount}
-          >
-            {isProcessingPayment ? (
-              <>
-                <Loader2 size={18} className="spin-icon" />
-                <span>Launching Razorpay Payment...</span>
-              </>
-            ) : (
-              <>
-                <CreditCard size={18} />
-                <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
-                <ArrowRight size={18} />
-              </>
+          {/* Startup Overview Pill */}
+          <div className="summary-team-pill" style={{ marginBottom: '20px' }}>
+            <div className="team-pill-name">{startupName}</div>
+            <div className="team-pill-sub">
+              Member: {memberName} ({teamData?.city || 'India'})
+            </div>
+            <div className="team-pill-sub" style={{ marginTop: '2px' }}>
+              Sector: <strong style={{ color: '#fff' }}>{teamData?.sector || 'AI/SaaS'}</strong> • Stage: {teamData?.stage || 'MVP'}
+            </div>
+            {teamData?.pitchDeckName && (
+              <div className="team-pill-sub" style={{ marginTop: '4px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
+                <FileText size={12} /> Pitch Deck: {teamData.pitchDeckName}
+              </div>
             )}
-          </button>
+          </div>
 
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            style={{ width: '100%', justifyContent: 'center' }}
-            onClick={onBack}
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Registration Form</span>
-          </button>
+          {/* Structured Admin Promo Coupon Box */}
+          <div className="coupon-box" style={{ background: 'rgba(13, 18, 30, 0.85)', padding: '18px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: '700', color: '#fff' }}>
+                <Tag size={16} color="var(--accent)" />
+                <span>Admin Promo Coupon</span>
+              </div>
+            </div>
+
+            {!appliedCoupon ? (
+              <div>
+                <div className="coupon-input-group">
+                  <input
+                    type="text"
+                    className="coupon-input"
+                    placeholder="Enter Code (e.g. ECELL100)"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError('');
+                    }}
+                  />
+                  <button type="button" className="btn-apply-coupon" onClick={() => handleApplyCoupon()}>
+                    Apply
+                  </button>
+                </div>
+
+                {/* Active Admin Coupons Badges */}
+                {applicableAdminCoupons.length > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginBottom: '6px' }}>
+                      Available Promo Codes:
+                    </div>
+                    <div className="admin-coupons-badge-list">
+                      {applicableAdminCoupons.map((c) => (
+                        <button
+                          key={c.id || c._id || c.code}
+                          type="button"
+                          className="coupon-chip"
+                          onClick={() => {
+                            setCouponInput(c.code);
+                            handleApplyCoupon(c.code);
+                          }}
+                        >
+                          <Sparkles size={12} />
+                          {c.code} ({c.badge})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {couponError && (
+                  <div style={{ color: 'var(--accent-rose)', fontSize: '0.8rem', marginTop: '8px' }}>
+                    {couponError}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="applied-coupon-banner">
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={16} color="var(--accent-emerald)" />
+                    <span>{appliedCoupon.code} APPLIED</span>
+                  </div>
+                  <div style={{ fontSize: '0.76rem', opacity: 0.9, marginTop: '2px' }}>
+                    {appliedCoupon.description}
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={handleRemoveCoupon} 
+                  title="Remove Coupon"
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: '4px' }}
+                >
+                  <XCircle size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Pricing Breakdown Table in INR (₹) */}
+          <div className="price-table" style={{ marginBottom: '24px' }}>
+            <div className="price-row">
+              <span>Individual Registration Fee</span>
+              <span>₹{subtotal.toLocaleString('en-IN')}</span>
+            </div>
+
+            {appliedCoupon && (
+              <div className="price-row discount">
+                <span>Admin Coupon Discount ({appliedCoupon.badge})</span>
+                <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
+            <div className="price-row total" style={{ paddingTop: '14px', borderTop: '1px solid var(--border-light)' }}>
+              <span>Total Payable</span>
+              <span style={{ color: 'var(--accent-emerald)', fontSize: '1.25rem', fontFamily: 'var(--font-heading)' }}>
+                ₹{finalTotal.toLocaleString('en-IN')} INR
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Official Razorpay Pay Amount CTA Button */}
+            <button 
+              type="button" 
+              className="btn-primary" 
+              style={{ width: '100%', justifyContent: 'center' }}
+              disabled={isProcessingPayment}
+              onClick={handlePayAmount}
+            >
+              {isProcessingPayment ? (
+                <>
+                  <Loader2 size={18} className="spin-icon" />
+                  <span>Checking Duplicate User & Razorpay...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard size={18} />
+                  <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={onBack}
+            >
+              <ArrowLeft size={16} />
+              <span>Back to Registration Form</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* User Already Exists Warning Popup Modal */}
+      <DuplicateWarningModal
+        isOpen={showDuplicateModal}
+        onClose={() => {
+          setShowDuplicateModal(false);
+          onBack();
+        }}
+        duplicateMessage={duplicateMessage}
+        email={teamData.email}
+        phone={teamData.phone}
+      />
+    </>
   );
 }
