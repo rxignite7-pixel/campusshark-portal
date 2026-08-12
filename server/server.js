@@ -29,9 +29,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Database Connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/campusshark';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://rxignite7_db_user:CAMPUSSHARKS@cluster0.qlx0yd4.mongodb.net/campusshark?retryWrites=true&w=majority';
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .then(() => console.log('✅ Connected to CampusShark MongoDB Atlas (rxignite7_db_user)'))
   .catch(err => console.log('⚠️ MongoDB connection note:', err.message));
 
 // Schemas & Models
