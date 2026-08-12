@@ -19,8 +19,7 @@ import {
   createEventAPI,
   deleteEventAPI,
   createScheduleAPI,
-  deleteScheduleAPI,
-  adminLoginAPI
+  deleteScheduleAPI
 } from './config/api';
 
 export default function App() {
@@ -33,10 +32,33 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
 
-  // Dynamic MongoDB Collections State
-  const [eventsList, setEventsList] = useState(EVENTS_DATA);
-  const [adminCoupons, setAdminCoupons] = useState(INITIAL_ADMIN_COUPONS);
-  const [scheduleCards, setScheduleCards] = useState(INITIAL_SCHEDULE_DATA);
+  // Persistent Collections State (LocalStorage Fallback + MongoDB API Sync)
+  const [eventsList, setEventsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('campusshark_events');
+      return saved ? JSON.parse(saved) : EVENTS_DATA;
+    } catch {
+      return EVENTS_DATA;
+    }
+  });
+
+  const [adminCoupons, setAdminCoupons] = useState(() => {
+    try {
+      const saved = localStorage.getItem('campusshark_coupons');
+      return saved ? JSON.parse(saved) : INITIAL_ADMIN_COUPONS;
+    } catch {
+      return INITIAL_ADMIN_COUPONS;
+    }
+  });
+
+  const [scheduleCards, setScheduleCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('campusshark_schedule');
+      return saved ? JSON.parse(saved) : INITIAL_SCHEDULE_DATA;
+    } catch {
+      return INITIAL_SCHEDULE_DATA;
+    }
+  });
 
   // Individual Founder & Startup Registration State
   const [teamData, setTeamData] = useState({
@@ -53,30 +75,49 @@ export default function App() {
   });
 
   // Selected event
-  const [selectedEvent, setSelectedEvent] = useState(EVENTS_DATA[0]);
-  const [appliedCoupon, setAppliedCoupon] = useState(INITIAL_ADMIN_COUPONS[0]);
+  const [selectedEvent, setSelectedEvent] = useState(eventsList[0] || EVENTS_DATA[0]);
+  const [appliedCoupon, setAppliedCoupon] = useState(adminCoupons[0] || INITIAL_ADMIN_COUPONS[0]);
 
-  // Fetch initial collections from MongoDB API on mount
+  // Keep localStorage continuously synced with active state
   useEffect(() => {
-    async function loadData() {
+    try {
+      localStorage.setItem('campusshark_events', JSON.stringify(eventsList));
+    } catch (e) { console.error('LocalStorage save error:', e); }
+  }, [eventsList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('campusshark_coupons', JSON.stringify(adminCoupons));
+    } catch (e) { console.error('LocalStorage save error:', e); }
+  }, [adminCoupons]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('campusshark_schedule', JSON.stringify(scheduleCards));
+    } catch (e) { console.error('LocalStorage save error:', e); }
+  }, [scheduleCards]);
+
+  // Sync with MongoDB API backend on mount
+  useEffect(() => {
+    async function syncWithBackendDatabase() {
       const dbEvents = await getEventsAPI();
-      if (dbEvents && dbEvents.length > 0) {
+      if (dbEvents && Array.isArray(dbEvents) && dbEvents.length > 0) {
         setEventsList(dbEvents);
         setSelectedEvent(dbEvents[0]);
       }
 
       const dbCoupons = await getCouponsAPI();
-      if (dbCoupons && dbCoupons.length > 0) {
+      if (dbCoupons && Array.isArray(dbCoupons) && dbCoupons.length > 0) {
         setAdminCoupons(dbCoupons);
         setAppliedCoupon(dbCoupons[0]);
       }
 
       const dbSchedule = await getScheduleAPI();
-      if (dbSchedule && dbSchedule.length > 0) {
+      if (dbSchedule && Array.isArray(dbSchedule) && dbSchedule.length > 0) {
         setScheduleCards(dbSchedule);
       }
     }
-    loadData();
+    syncWithBackendDatabase();
   }, []);
 
   const navigateToStep = (step) => {
@@ -136,7 +177,7 @@ export default function App() {
     setIsDashboardModalOpen(false);
   };
 
-  // Dynamic Event Track Handlers
+  // Dynamic Event Track Handlers (Updates State + LocalStorage + MongoDB API)
   const handleAddEvent = async (newEvent) => {
     setEventsList(prev => [newEvent, ...prev]);
     if (adminToken) {
@@ -158,7 +199,7 @@ export default function App() {
     }
   };
 
-  // Coupon Handlers
+  // Coupon Handlers (Updates State + LocalStorage + MongoDB API)
   const handleAddAdminCoupon = async (newCoupon) => {
     setAdminCoupons(prev => [newCoupon, ...prev]);
     if (adminToken) {
@@ -177,7 +218,7 @@ export default function App() {
     }
   };
 
-  // Schedule Card Handlers
+  // Schedule Card Handlers (Updates State + LocalStorage + MongoDB API)
   const handleAddScheduleCard = async (newCard) => {
     setScheduleCards(prev => [newCard, ...prev]);
     if (adminToken) {
