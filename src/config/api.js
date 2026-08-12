@@ -1,4 +1,4 @@
-// API Configuration for CampusShark Frontend & MongoDB Atlas Backend
+// API Configuration for CampusShark Frontend, Razorpay & MongoDB Atlas Backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const API_URL = API_BASE_URL;
@@ -15,7 +15,25 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-// 1. Submit Founder Registration to MongoDB
+// 1. Razorpay: Create Payment Order
+export async function createRazorpayOrderAPI(amount, receipt) {
+  return await fetchJson(`${API_BASE_URL}/api/payment/create-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, receipt })
+  });
+}
+
+// 2. Razorpay: Verify Payment Signature & Save to MongoDB
+export async function verifyRazorpayPaymentAPI(paymentPayload) {
+  return await fetchJson(`${API_BASE_URL}/api/payment/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(paymentPayload)
+  });
+}
+
+// 3. Submit Member Registration to MongoDB (Direct)
 export async function submitRegistration(formData) {
   const body = new FormData();
   Object.keys(formData).forEach(key => {
@@ -38,27 +56,27 @@ export async function submitRegistration(formData) {
   }
 }
 
-// 1b. Fetch All Paid Founder Registrations from MongoDB
+// 4. Fetch All Paid Registrations from MongoDB
 export async function getRegistrationsAPI() {
   return await fetchJson(`${API_BASE_URL}/api/admin/registrations`);
 }
 
-// 2. Fetch Events from MongoDB
+// 5. Fetch Events from MongoDB
 export async function getEventsAPI() {
   return await fetchJson(`${API_BASE_URL}/api/events`);
 }
 
-// 3. Fetch Coupons from MongoDB
+// 6. Fetch Coupons from MongoDB
 export async function getCouponsAPI() {
   return await fetchJson(`${API_BASE_URL}/api/coupons`);
 }
 
-// 4. Fetch Schedule from MongoDB
+// 7. Fetch Schedule from MongoDB
 export async function getScheduleAPI() {
   return await fetchJson(`${API_BASE_URL}/api/schedule`);
 }
 
-// 5. Admin Login API
+// 8. Admin Login API
 export async function adminLoginAPI(email, password) {
   return await fetchJson(`${API_BASE_URL}/api/admin/login`, {
     method: 'POST',
@@ -67,7 +85,7 @@ export async function adminLoginAPI(email, password) {
   });
 }
 
-// 6. Admin Create Coupon
+// 9. Admin Create Coupon
 export async function createCouponAPI(couponData, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/coupons`, {
     method: 'POST',
@@ -79,7 +97,7 @@ export async function createCouponAPI(couponData, token) {
   });
 }
 
-// 7. Admin Delete Coupon
+// 10. Admin Delete Coupon
 export async function deleteCouponAPI(code, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/coupons/${code}`, {
     method: 'DELETE',
@@ -87,7 +105,7 @@ export async function deleteCouponAPI(code, token) {
   });
 }
 
-// 8. Admin Create Event
+// 11. Admin Create Event
 export async function createEventAPI(eventData, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/events`, {
     method: 'POST',
@@ -99,7 +117,7 @@ export async function createEventAPI(eventData, token) {
   });
 }
 
-// 9. Admin Delete Event
+// 12. Admin Delete Event
 export async function deleteEventAPI(eventId, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/events/${eventId}`, {
     method: 'DELETE',
@@ -107,7 +125,7 @@ export async function deleteEventAPI(eventId, token) {
   });
 }
 
-// 10. Admin Create Schedule
+// 13. Admin Create Schedule
 export async function createScheduleAPI(scheduleData, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/schedule`, {
     method: 'POST',
@@ -119,7 +137,7 @@ export async function createScheduleAPI(scheduleData, token) {
   });
 }
 
-// 11. Admin Delete Schedule
+// 14. Admin Delete Schedule
 export async function deleteScheduleAPI(scheduleId, token) {
   return await fetchJson(`${API_BASE_URL}/api/admin/schedule/${scheduleId}`, {
     method: 'DELETE',

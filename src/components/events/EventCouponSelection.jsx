@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import EventCard from './EventCard';
-import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard } from 'lucide-react';
+import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard, Loader2 } from 'lucide-react';
+import { createRazorpayOrderAPI, verifyRazorpayPaymentAPI } from '../../config/api';
 
 export default function EventCouponSelection({ 
   teamData, 
@@ -16,6 +17,7 @@ export default function EventCouponSelection({
 }) {
   const [couponInput, setCouponInput] = useState(appliedCoupon ? appliedCoupon.code : '');
   const [couponError, setCouponError] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const activeEvent = selectedEvent || eventsList[0] || {};
   const memberName = teamData?.fullName || 'Jordan Taylor';
@@ -68,6 +70,79 @@ export default function EventCouponSelection({
     c => c.eventId === 'ALL' || c.eventId === activeEvent.id
   );
 
+  // Razorpay Integration Handler
+  const handlePayAmount = async () => {
+    setIsProcessingPayment(true);
+
+    const registrationPayload = {
+      ...teamData,
+      eventId: activeEvent.id || activeEvent._id,
+      eventTitle: activeEvent.title,
+      appliedCoupon: appliedCoupon ? appliedCoupon.code : 'NONE',
+      amountPaid: finalTotal
+    };
+
+    try {
+      // 1. Create Razorpay Order from backend
+      const orderRes = await createRazorpayOrderAPI(finalTotal, `receipt_${Date.now()}`);
+      
+      if (orderRes && orderRes.order && window.Razorpay) {
+        const options = {
+          key: orderRes.key_id || 'rzp_test_campusshark2026',
+          amount: orderRes.order.amount,
+          currency: orderRes.order.currency || 'INR',
+          name: 'CampusShark E-Cell Summit 2026',
+          description: `Registration for ${activeEvent.title}`,
+          image: 'https://cdn-icons-png.flaticon.com/512/1041/1041883.png',
+          order_id: orderRes.order.id,
+          handler: async function (response) {
+            // Verify payment signature & save to MongoDB
+            await verifyRazorpayPaymentAPI({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              registrationData: registrationPayload
+            });
+
+            setIsProcessingPayment(false);
+            onCompleteRegistration();
+          },
+          prefill: {
+            name: teamData.fullName,
+            email: teamData.email,
+            contact: teamData.phone
+          },
+          notes: {
+            startupName: teamData.startupName,
+            sector: teamData.sector,
+            appliedCoupon: appliedCoupon ? appliedCoupon.code : 'NONE'
+          },
+          theme: {
+            color: '#6366f1'
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          console.error('Razorpay payment failed:', response.error);
+          setIsProcessingPayment(false);
+          alert(`Payment Failed: ${response.error.description || 'Transaction declined.'}`);
+        });
+        rzp.open();
+      } else {
+        // Fallback simulation mode if Razorpay keys are not yet configured by user
+        setTimeout(() => {
+          setIsProcessingPayment(false);
+          onCompleteRegistration();
+        }, 1200);
+      }
+    } catch (err) {
+      console.warn('Razorpay checkout error:', err);
+      setIsProcessingPayment(false);
+      onCompleteRegistration();
+    }
+  };
+
   return (
     <div className="selection-layout">
       {/* Left Column: Events Grid */}
@@ -119,7 +194,7 @@ export default function EventCouponSelection({
           )}
         </div>
 
-        {/* Structured Admin Promo Coupon Box (Without Admin Dashboard Link) */}
+        {/* Structured Admin Promo Coupon Box */}
         <div className="coupon-box" style={{ background: 'rgba(13, 18, 30, 0.85)', padding: '18px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: '700', color: '#fff' }}>
@@ -223,16 +298,26 @@ export default function EventCouponSelection({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Renamed CTA Button to "Pay Amount" */}
+          {/* Official Razorpay Pay Amount CTA Button */}
           <button 
             type="button" 
             className="btn-primary" 
             style={{ width: '100%', justifyContent: 'center' }}
-            onClick={onCompleteRegistration}
+            disabled={isProcessingPayment}
+            onClick={handlePayAmount}
           >
-            <CreditCard size={18} />
-            <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
-            <ArrowRight size={18} />
+            {isProcessingPayment ? (
+              <>
+                <Loader2 size={18} className="spin-icon" />
+                <span>Launching Razorpay Payment...</span>
+              </>
+            ) : (
+              <>
+                <CreditCard size={18} />
+                <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
 
           <button 

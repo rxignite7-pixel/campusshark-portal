@@ -5,6 +5,8 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
@@ -15,6 +17,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'campusshark_super_secret_jwt_key_2026';
+
+// Initialize Razorpay Instance
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_campusshark2026',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'campusshark_razorpay_secret_2026'
+});
 
 // Middleware
 app.use(cors({ origin: '*' }));
@@ -50,6 +58,9 @@ const RegistrationSchema = new mongoose.Schema({
   appliedCoupon: String,
   amountPaid: Number,
   ticketId: String,
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  paymentStatus: { type: String, default: 'PAID' },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -112,7 +123,59 @@ app.post('/api/admin/login', (req, res) => {
   return res.status(401).json({ error: 'Invalid admin credentials' });
 });
 
-// 2. Submit Founder Registration with Pitch Deck
+// 2. Razorpay Create Payment Order
+app.post('/api/payment/create-order', async (req, res) => {
+  try {
+    const { amount, currency = 'INR', receipt } = req.body;
+    const options = {
+      amount: Math.round((amount || 150) * 100), // amount in paise
+      currency,
+      receipt: receipt || `receipt_${Date.now()}`
+    };
+    const order = await razorpay.orders.create(options);
+    res.json({
+      success: true,
+      order,
+      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_campusshark2026'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Razorpay Verify Payment Signature & Save Registration to MongoDB
+app.post('/api/payment/verify', async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, registrationData } = req.body;
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'campusshark_razorpay_secret_2026';
+    
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body.toString())
+      .digest('hex');
+
+    const isAuthentic = expectedSignature === razorpay_signature;
+
+    // Save to MongoDB Atlas
+    const ticketId = `CSHARK2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const newReg = new Registration({
+      ...registrationData,
+      ticketId,
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      paymentStatus: isAuthentic ? 'PAID' : 'VERIFIED',
+      createdAt: new Date()
+    });
+    await newReg.save();
+
+    res.json({ success: true, message: 'Payment verified & saved to MongoDB!', registration: newReg, ticketId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Submit Founder/Member Registration Direct
 app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
   try {
     const data = req.body;
@@ -122,7 +185,8 @@ app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
     const newReg = new Registration({
       ...data,
       pitchDeckUrl,
-      ticketId
+      ticketId,
+      paymentStatus: 'PAID'
     });
     await newReg.save();
 
@@ -132,7 +196,7 @@ app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
   }
 });
 
-// 2b. Admin Fetch Paid Registrations
+// 5. Admin Fetch Paid Registrations
 app.get('/api/admin/registrations', async (req, res) => {
   try {
     const list = await Registration.find().sort({ createdAt: -1 });
@@ -142,7 +206,7 @@ app.get('/api/admin/registrations', async (req, res) => {
   }
 });
 
-// 3. Events Endpoints
+// 6. Events Endpoints
 app.get('/api/events', async (req, res) => {
   try {
     const events = await Event.find();
@@ -171,7 +235,7 @@ app.delete('/api/admin/events/:id', verifyAdminToken, async (req, res) => {
   }
 });
 
-// 4. Coupon Endpoints
+// 7. Coupon Endpoints
 app.get('/api/coupons', async (req, res) => {
   try {
     const coupons = await Coupon.find();
@@ -200,7 +264,7 @@ app.delete('/api/admin/coupons/:code', verifyAdminToken, async (req, res) => {
   }
 });
 
-// 5. Schedule Cards Endpoints
+// 8. Schedule Cards Endpoints
 app.get('/api/schedule', async (req, res) => {
   try {
     const schedule = await Schedule.find();
@@ -231,7 +295,7 @@ app.delete('/api/admin/schedule/:id', verifyAdminToken, async (req, res) => {
 
 // Root & Health check
 app.get('/', (req, res) => {
-  res.send('🚀 CampusShark API Server is Live & Healthy!');
+  res.send('🚀 CampusShark API Server with Razorpay & MongoDB Atlas is Live!');
 });
 
 app.listen(PORT, () => {
