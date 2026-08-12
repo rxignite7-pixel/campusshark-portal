@@ -20,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'campusshark_super_secret_jwt_key_2
 
 // Initialize Razorpay Instance
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_campusshark2026',
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TOyqd2U2Wrsk8q',
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'campusshark_razorpay_secret_2026'
 });
 
@@ -179,7 +179,7 @@ app.post('/api/payment/create-order', async (req, res) => {
     res.json({
       success: true,
       order,
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_campusshark2026'
+      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TOyqd2U2Wrsk8q'
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

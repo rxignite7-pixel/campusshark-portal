@@ -109,7 +109,7 @@ export default function EventCouponSelection({
 
       if (orderRes && orderRes.order && window.Razorpay) {
         const options = {
-          key: orderRes.key_id || 'rzp_test_campusshark2026',
+          key: orderRes.key_id || 'rzp_test_TOyqd2U2Wrsk8q',
           amount: orderRes.order.amount,
           currency: orderRes.order.currency || 'INR',
           name: 'CampusShark E-Cell Summit 2026',
