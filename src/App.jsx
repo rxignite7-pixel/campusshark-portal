@@ -11,6 +11,7 @@ import TicketPass from './components/pass/TicketPass';
 import { EVENTS_DATA, INITIAL_ADMIN_COUPONS, INITIAL_SCHEDULE_DATA } from './data/eventsAndCoupons';
 import { 
   submitRegistration, 
+  getRegistrationsAPI,
   getEventsAPI, 
   getCouponsAPI, 
   getScheduleAPI,
@@ -32,7 +33,9 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
 
-  // Persistent Collections State (LocalStorage Fallback + MongoDB API Sync)
+  // Dynamic MongoDB Collections State
+  const [registrationsList, setRegistrationsList] = useState([]);
+  
   const [eventsList, setEventsList] = useState(() => {
     try {
       const saved = localStorage.getItem('campusshark_events');
@@ -78,7 +81,7 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState(eventsList[0] || EVENTS_DATA[0]);
   const [appliedCoupon, setAppliedCoupon] = useState(adminCoupons[0] || INITIAL_ADMIN_COUPONS[0]);
 
-  // Keep localStorage continuously synced with active state
+  // Keep localStorage continuously synced
   useEffect(() => {
     try {
       localStorage.setItem('campusshark_events', JSON.stringify(eventsList));
@@ -97,27 +100,33 @@ export default function App() {
     } catch (e) { console.error('LocalStorage save error:', e); }
   }, [scheduleCards]);
 
-  // Sync with MongoDB API backend on mount
-  useEffect(() => {
-    async function syncWithBackendDatabase() {
-      const dbEvents = await getEventsAPI();
-      if (dbEvents && Array.isArray(dbEvents) && dbEvents.length > 0) {
-        setEventsList(dbEvents);
-        setSelectedEvent(dbEvents[0]);
-      }
-
-      const dbCoupons = await getCouponsAPI();
-      if (dbCoupons && Array.isArray(dbCoupons) && dbCoupons.length > 0) {
-        setAdminCoupons(dbCoupons);
-        setAppliedCoupon(dbCoupons[0]);
-      }
-
-      const dbSchedule = await getScheduleAPI();
-      if (dbSchedule && Array.isArray(dbSchedule) && dbSchedule.length > 0) {
-        setScheduleCards(dbSchedule);
-      }
+  // Sync with MongoDB API backend on mount & on drawer open
+  const fetchMongoDBCollections = async () => {
+    const dbRegs = await getRegistrationsAPI();
+    if (dbRegs && Array.isArray(dbRegs)) {
+      setRegistrationsList(dbRegs);
     }
-    syncWithBackendDatabase();
+
+    const dbEvents = await getEventsAPI();
+    if (dbEvents && Array.isArray(dbEvents) && dbEvents.length > 0) {
+      setEventsList(dbEvents);
+      setSelectedEvent(dbEvents[0]);
+    }
+
+    const dbCoupons = await getCouponsAPI();
+    if (dbCoupons && Array.isArray(dbCoupons) && dbCoupons.length > 0) {
+      setAdminCoupons(dbCoupons);
+      setAppliedCoupon(dbCoupons[0]);
+    }
+
+    const dbSchedule = await getScheduleAPI();
+    if (dbSchedule && Array.isArray(dbSchedule) && dbSchedule.length > 0) {
+      setScheduleCards(dbSchedule);
+    }
+  };
+
+  useEffect(() => {
+    fetchMongoDBCollections();
   }, []);
 
   const navigateToStep = (step) => {
@@ -145,7 +154,10 @@ export default function App() {
     };
 
     // Post to MongoDB backend
-    await submitRegistration(payload);
+    const res = await submitRegistration(payload);
+    if (res && res.registration) {
+      setRegistrationsList(prev => [res.registration, ...prev]);
+    }
     navigateToStep(3);
   };
 
@@ -155,6 +167,7 @@ export default function App() {
 
   // Open Admin Access
   const handleOpenAdminAccess = () => {
+    fetchMongoDBCollections();
     if (isAdminLoggedIn) {
       setIsDashboardModalOpen(true);
     } else {
@@ -168,6 +181,7 @@ export default function App() {
     setAdminToken(token);
     setIsLoginModalOpen(false);
     setIsDashboardModalOpen(true);
+    fetchMongoDBCollections();
   };
 
   const handleAdminLogout = () => {
@@ -177,7 +191,7 @@ export default function App() {
     setIsDashboardModalOpen(false);
   };
 
-  // Dynamic Event Track Handlers (Updates State + LocalStorage + MongoDB API)
+  // Dynamic Event Track Handlers
   const handleAddEvent = async (newEvent) => {
     setEventsList(prev => [newEvent, ...prev]);
     if (adminToken) {
@@ -199,7 +213,7 @@ export default function App() {
     }
   };
 
-  // Coupon Handlers (Updates State + LocalStorage + MongoDB API)
+  // Coupon Handlers
   const handleAddAdminCoupon = async (newCoupon) => {
     setAdminCoupons(prev => [newCoupon, ...prev]);
     if (adminToken) {
@@ -218,7 +232,7 @@ export default function App() {
     }
   };
 
-  // Schedule Card Handlers (Updates State + LocalStorage + MongoDB API)
+  // Schedule Card Handlers
   const handleAddScheduleCard = async (newCard) => {
     setScheduleCards(prev => [newCard, ...prev]);
     if (adminToken) {
@@ -310,6 +324,7 @@ export default function App() {
         onClose={() => setIsDashboardModalOpen(false)}
         adminUser={adminUser}
         onLogout={handleAdminLogout}
+        registrationsList={registrationsList}
         eventsList={eventsList}
         onAddEvent={handleAddEvent}
         onDeleteEvent={handleDeleteEvent}

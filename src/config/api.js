@@ -38,6 +38,11 @@ export async function submitRegistration(formData) {
   }
 }
 
+// 1b. Fetch All Paid Founder Registrations from MongoDB
+export async function getRegistrationsAPI() {
+  return await fetchJson(`${API_BASE_URL}/api/admin/registrations`);
+}
+
 // 2. Fetch Events from MongoDB
 export async function getEventsAPI() {
   return await fetchJson(`${API_BASE_URL}/api/events`);

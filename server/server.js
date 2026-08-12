@@ -116,7 +116,7 @@ app.post('/api/admin/login', (req, res) => {
 app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
   try {
     const data = req.body;
-    const pitchDeckUrl = req.file ? `/uploads/${req.file.filename}` : data.pitchDeckName;
+    const pitchDeckUrl = req.file ? `/uploads/${req.file.filename}` : (data.pitchDeckName || 'Attached');
     const ticketId = `CSHARK2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     const newReg = new Registration({
@@ -127,6 +127,16 @@ app.post('/api/register', upload.single('pitchDeck'), async (req, res) => {
     await newReg.save();
 
     res.json({ success: true, ticketId, registration: newReg });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2b. Admin Fetch Paid Registrations
+app.get('/api/admin/registrations', async (req, res) => {
+  try {
+    const list = await Registration.find().sort({ createdAt: -1 });
+    res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
