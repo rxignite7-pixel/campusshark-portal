@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
+import BackgroundCarousel from './components/common/BackgroundCarousel';
 import AdminLoginModal from './components/common/AdminLoginModal';
 import AdminDashboardModal from './components/common/AdminDashboardModal';
 import LandingHero from './components/hero/LandingHero';
@@ -248,7 +249,8 @@ export default function App() {
 
   return (
     <>
-      {/* Dynamic Animated Mesh Ambient Background */}
+      {/* Dynamic Swiping Team Photo Background Carousel & Mesh Ambient */}
+      <BackgroundCarousel />
       <div className="bg-ambient">
         <div className="ambient-blob blob-1" />
         <div className="ambient-blob blob-2" />
