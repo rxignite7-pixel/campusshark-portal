@@ -20,9 +20,9 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
 
     if (apiRes && apiRes.success) {
       onLoginSuccess(apiRes.user, apiRes.token);
-    } else if (email === 'admin@campusshark.in' && password === 'admin123') {
+    } else if (email.trim().toLowerCase() === 'rxignite7@gmail.com' && password === 'CAMPUSSHARKS') {
       // Fallback local auth if backend offline
-      onLoginSuccess({ email: 'admin@campusshark.in', role: 'SuperAdmin' }, 'fallback-token-123');
+      onLoginSuccess({ email: 'rxignite7@gmail.com', role: 'SuperAdmin' }, 'token-rxignite-2026');
     } else {
       setError(apiRes?.error || 'Invalid Admin Email or Password.');
     }

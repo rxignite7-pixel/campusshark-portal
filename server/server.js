@@ -116,9 +116,10 @@ const verifyAdminToken = (req, res, next) => {
 // 1. Admin Login
 app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body;
-  if (email === 'admin@campusshark.in' && password === 'admin123') {
-    const token = jwt.sign({ email, role: 'SuperAdmin' }, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ success: true, token, user: { email, role: 'SuperAdmin' } });
+  const adminEmail = (email || '').trim().toLowerCase();
+  if (adminEmail === 'rxignite7@gmail.com' && password === 'CAMPUSSHARKS') {
+    const token = jwt.sign({ email: adminEmail, role: 'SuperAdmin' }, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ success: true, token, user: { email: adminEmail, role: 'SuperAdmin' } });
   }
   return res.status(401).json({ error: 'Invalid admin credentials' });
 });
