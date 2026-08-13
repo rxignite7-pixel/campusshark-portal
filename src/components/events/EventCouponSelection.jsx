@@ -86,7 +86,7 @@ export default function EventCouponSelection({
     c => c.eventId === 'ALL' || c.eventId === activeEvent.id
   );
 
-  // Standard Native Razorpay Checkout Handler (Supports PhonePe, GPay, Paytm, Cards, NetBanking)
+  // Razorpay Payment Handler (PhonePe, Google Pay, Paytm, BHIM, Cards & NetBanking)
   const handlePayAmount = async () => {
     setIsProcessingPayment(true);
 
@@ -107,7 +107,7 @@ export default function EventCouponSelection({
       amountPaid: finalTotal
     };
 
-    // Helper to launch standard Razorpay Modal
+    // Helper to launch Razorpay Modal prioritizing PhonePe & GPay with show_default_blocks: true
     const launchRazorpayModal = (orderId = null, keyId = RAZORPAY_KEY) => {
       const options = {
         key: keyId || RAZORPAY_KEY,
@@ -120,7 +120,35 @@ export default function EventCouponSelection({
         prefill: {
           name: teamData.fullName || '',
           email: teamData.email || '',
-          contact: teamData.phone || ''
+          contact: teamData.phone || '',
+          method: 'upi' // Prefill UPI mode
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI Apps (PhonePe, Google Pay, Paytm, BHIM)',
+                instruments: [
+                  {
+                    method: 'upi',
+                    apps: ['google_pay', 'phonepe', 'paytm', 'bhim']
+                  }
+                ]
+              },
+              other: {
+                name: 'Other Gateways (Cards, NetBanking, Wallets)',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' }
+                ]
+              }
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: {
+              show_default_blocks: true // Ensures all payment options work without error!
+            }
+          }
         },
         notes: {
           startupName: teamData.startupName || '',
