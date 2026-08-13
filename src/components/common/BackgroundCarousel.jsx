@@ -44,16 +44,16 @@ export default function BackgroundCarousel() {
               backgroundImage: `url(${imgSrc})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center center',
-              opacity: isActive ? 0.45 : 0,
-              transform: isActive ? 'scale(1.04)' : 'scale(1)',
+              opacity: isActive ? 0.72 : 0,
+              transform: isActive ? 'scale(1.03)' : 'scale(1)',
               transition: 'opacity 1.5s ease-in-out, transform 6s ease-out',
-              filter: 'brightness(0.75) contrast(1.05)'
+              filter: 'brightness(0.85) contrast(1.1)'
             }}
           />
         );
       })}
 
-      {/* Ambient Theme Gradient Mask */}
+      {/* Dark Ambient Masking Layer (Protects legibility while keeping photos very clear) */}
       <div
         style={{
           position: 'absolute',
@@ -61,7 +61,7 @@ export default function BackgroundCarousel() {
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(180deg, rgba(13, 18, 30, 0.75) 0%, rgba(13, 18, 30, 0.88) 50%, rgba(13, 18, 30, 0.95) 100%)'
+          background: 'linear-gradient(180deg, rgba(13, 18, 30, 0.62) 0%, rgba(13, 18, 30, 0.75) 50%, rgba(13, 18, 30, 0.88) 100%)'
         }}
       />
     </div>
