@@ -86,7 +86,7 @@ export default function EventCouponSelection({
     c => c.eventId === 'ALL' || c.eventId === activeEvent.id
   );
 
-  // UPI Dedicated Razorpay Modal Launcher (Google Pay, PhonePe, Paytm, BHIM, VPA)
+  // Standard Native Razorpay Checkout Handler (Supports PhonePe, GPay, Paytm, Cards, NetBanking)
   const handlePayAmount = async () => {
     setIsProcessingPayment(true);
 
@@ -107,7 +107,7 @@ export default function EventCouponSelection({
       amountPaid: finalTotal
     };
 
-    // Helper to open Razorpay Modal Popup targeting UPI apps (PhonePe, GPay, Paytm)
+    // Helper to launch standard Razorpay Modal
     const launchRazorpayModal = (orderId = null, keyId = RAZORPAY_KEY) => {
       const options = {
         key: keyId || RAZORPAY_KEY,
@@ -115,31 +115,12 @@ export default function EventCouponSelection({
         currency: 'INR',
         name: 'CampusShark E-Cell Summit 2026',
         description: `Registration Fee for ${activeEvent.title}`,
-        image: 'https://cdn-icons-png.flaticon.com/512/1041/1041883.png',
+        image: '/logo.jpg',
         order_id: orderId,
         prefill: {
           name: teamData.fullName || '',
           email: teamData.email || '',
-          contact: teamData.phone || '',
-          method: 'upi' // Default to UPI payment method
-        },
-        config: {
-          display: {
-            blocks: {
-              upi: {
-                name: 'Pay via UPI Apps (Google Pay, PhonePe, Paytm, BHIM)',
-                instruments: [
-                  {
-                    method: 'upi'
-                  }
-                ]
-              }
-            },
-            sequence: ['block.upi'],
-            preferences: {
-              show_default_blocks: false
-            }
-          }
+          contact: teamData.phone || ''
         },
         notes: {
           startupName: teamData.startupName || '',
@@ -201,7 +182,7 @@ export default function EventCouponSelection({
         launchRazorpayModal(null, RAZORPAY_KEY);
       }
     } catch (err) {
-      console.warn('Backend order creation offline, opening direct UPI Razorpay modal:', err);
+      console.warn('Backend order creation offline, opening direct Razorpay modal:', err);
       launchRazorpayModal(null, RAZORPAY_KEY);
     }
   };
@@ -418,12 +399,12 @@ export default function EventCouponSelection({
               {isProcessingPayment ? (
                 <>
                   <Loader2 size={18} className="spin-icon" />
-                  <span>Opening UPI Payment Apps...</span>
+                  <span>Opening Razorpay Payment Checkout...</span>
                 </>
               ) : (
                 <>
                   <CreditCard size={18} />
-                  <span>Pay Amount via UPI (₹{finalTotal.toLocaleString('en-IN')})</span>
+                  <span>Pay Amount (₹{finalTotal.toLocaleString('en-IN')})</span>
                   <ArrowRight size={18} />
                 </>
               )}
