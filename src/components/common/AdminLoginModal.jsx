@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
-import { Key, Mail, Lock, X, ShieldAlert, Sparkles } from 'lucide-react';
+import { Key, Mail, Lock, X, ShieldAlert } from 'lucide-react';
 import { adminLoginAPI } from '../../config/api';
 
 export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
-  const [email, setEmail] = useState('admin@campusshark.in');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleFillCredentials = () => {
-    setEmail('admin@campusshark.in');
-    setPassword('admin123');
-    setError('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +35,7 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
         onClick={(e) => e.stopPropagation()} 
         style={{ maxWidth: '420px', padding: '28px', height: 'auto', borderRadius: 'var(--radius-lg)' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '8px', borderRadius: '10px', color: 'var(--primary)' }}>
               <Key size={22} />
@@ -60,21 +54,6 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
           </button>
         </div>
 
-        {/* Quick Credentials Auto-Fill Button */}
-        <div style={{ marginBottom: '18px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--accent-amber)', fontWeight: '700' }}>Demo Credentials Ready</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>admin@campusshark.in / admin123</div>
-          </div>
-          <button
-            type="button"
-            onClick={handleFillCredentials}
-            style={{ background: 'var(--accent-amber)', color: '#000', border: 'none', padding: '4px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <Sparkles size={12} /> Auto-Fill
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit}>
           <div className="gf-field-group" style={{ marginBottom: '14px' }}>
             <label className="gf-label" style={{ fontSize: '0.8rem' }}>Admin Email</label>
@@ -83,7 +62,7 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
               <input
                 type="email"
                 className="gf-input"
-                placeholder="admin@campusshark.in"
+                placeholder="Enter admin email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -98,7 +77,7 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
               <input
                 type="password"
                 className="gf-input"
-                placeholder="••••••••"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

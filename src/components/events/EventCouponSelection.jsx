@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import EventCard from './EventCard';
 import DuplicateWarningModal from '../common/DuplicateWarningModal';
-import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard, Loader2 } from 'lucide-react';
+import { Tag, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, XCircle, CheckCircle, Rocket, FileText, CreditCard, Loader2, Ticket } from 'lucide-react';
 import { createRazorpayOrderAPI, verifyRazorpayPaymentAPI, checkDuplicateAPI, submitRegistration } from '../../config/api';
 
 const RAZORPAY_KEY = 'rzp_test_TOyqd2U2Wrsk8q';
@@ -137,7 +137,7 @@ export default function EventCouponSelection({
             },
             sequence: ['block.upi'],
             preferences: {
-              show_default_blocks: false // Hides cards and wallets to show UPI Apps directly!
+              show_default_blocks: false
             }
           }
         },
@@ -150,7 +150,6 @@ export default function EventCouponSelection({
           color: '#6366f1'
         },
         handler: async function (response) {
-          // Verify & Save to MongoDB Atlas
           if (response.razorpay_payment_id) {
             await verifyRazorpayPaymentAPI({
               razorpay_order_id: response.razorpay_order_id || `order_dummy_${Date.now()}`,
@@ -187,7 +186,6 @@ export default function EventCouponSelection({
     };
 
     try {
-      // Try backend Order creation first
       const orderRes = await createRazorpayOrderAPI(finalTotal, `receipt_${Date.now()}`, teamData.email, teamData.phone);
       
       if (orderRes && orderRes.isDuplicate) {
@@ -200,7 +198,6 @@ export default function EventCouponSelection({
       if (orderRes && orderRes.order) {
         launchRazorpayModal(orderRes.order.id, orderRes.key_id);
       } else {
-        // Direct Client-side UPI Razorpay Launch
         launchRazorpayModal(null, RAZORPAY_KEY);
       }
     } catch (err) {
@@ -212,13 +209,83 @@ export default function EventCouponSelection({
   return (
     <>
       <div className="selection-layout">
-        {/* Left Column: Events Grid */}
+        {/* Left Column: Events Grid & Clearly Visible Available Coupons */}
         <div>
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <h2 className="section-heading">Select Event Track</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
               Select the official summit track for <strong>"{startupName}"</strong> (Member: {memberName}).
             </p>
+          </div>
+
+          {/* Prominent & Clearly Visible Available Promo Coupons Section */}
+          <div 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
+              border: '1px solid rgba(139, 92, 246, 0.4)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px 20px',
+              marginBottom: '24px',
+              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.15)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#fff', fontSize: '0.95rem' }}>
+                <Ticket size={18} color="var(--accent-amber)" />
+                <span>Available Promo Coupon Codes</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click code to apply</span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {applicableAdminCoupons.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>No promo codes currently active.</div>
+              ) : (
+                applicableAdminCoupons.map((c) => {
+                  const isCurrentApplied = appliedCoupon && appliedCoupon.code === c.code;
+                  return (
+                    <button
+                      key={c.id || c._id || c.code}
+                      type="button"
+                      onClick={() => {
+                        setCouponInput(c.code);
+                        handleApplyCoupon(c.code);
+                      }}
+                      style={{
+                        background: isCurrentApplied ? 'var(--accent-emerald)' : 'rgba(13, 18, 30, 0.9)',
+                        border: `1.5px solid ${isCurrentApplied ? 'var(--accent-emerald)' : 'var(--accent)'}`,
+                        color: isCurrentApplied ? '#000' : '#fff',
+                        padding: '8px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontWeight: '700',
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isCurrentApplied ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none'
+                      }}
+                    >
+                      <Sparkles size={14} color={isCurrentApplied ? '#000' : 'var(--accent-amber)'} />
+                      <span>{c.code}</span>
+                      <span 
+                        style={{ 
+                          background: isCurrentApplied ? 'rgba(0,0,0,0.2)' : 'rgba(16, 185, 129, 0.2)', 
+                          color: isCurrentApplied ? '#000' : 'var(--accent-emerald)', 
+                          padding: '2px 6px', 
+                          borderRadius: '4px', 
+                          fontSize: '0.72rem', 
+                          fontWeight: '800' 
+                        }}
+                      >
+                        {c.badge}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
 
           <div className="events-grid">
@@ -266,7 +333,7 @@ export default function EventCouponSelection({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: '700', color: '#fff' }}>
                 <Tag size={16} color="var(--accent)" />
-                <span>Admin Promo Coupon</span>
+                <span>Apply Promo Coupon</span>
               </div>
             </div>
 
@@ -287,31 +354,6 @@ export default function EventCouponSelection({
                     Apply
                   </button>
                 </div>
-
-                {/* Active Admin Coupons Badges */}
-                {applicableAdminCoupons.length > 0 && (
-                  <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginBottom: '6px' }}>
-                      Available Promo Codes:
-                    </div>
-                    <div className="admin-coupons-badge-list">
-                      {applicableAdminCoupons.map((c) => (
-                        <button
-                          key={c.id || c._id || c.code}
-                          type="button"
-                          className="coupon-chip"
-                          onClick={() => {
-                            setCouponInput(c.code);
-                            handleApplyCoupon(c.code);
-                          }}
-                        >
-                          <Sparkles size={12} />
-                          {c.code} ({c.badge})
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {couponError && (
                   <div style={{ color: 'var(--accent-rose)', fontSize: '0.8rem', marginTop: '8px' }}>
@@ -365,7 +407,7 @@ export default function EventCouponSelection({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Dedicated UPI Razorpay Pay Amount CTA Button */}
+            {/* Official Razorpay Pay Amount CTA Button */}
             <button 
               type="button" 
               className="btn-primary" 

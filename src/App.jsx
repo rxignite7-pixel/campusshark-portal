@@ -79,7 +79,7 @@ export default function App() {
 
   // Selected event
   const [selectedEvent, setSelectedEvent] = useState(eventsList[0] || EVENTS_DATA[0]);
-  const [appliedCoupon, setAppliedCoupon] = useState(adminCoupons[0] || INITIAL_ADMIN_COUPONS[0]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
 
   // Keep localStorage continuously synced
   useEffect(() => {
@@ -116,7 +116,6 @@ export default function App() {
     const dbCoupons = await getCouponsAPI();
     if (dbCoupons && Array.isArray(dbCoupons) && dbCoupons.length > 0) {
       setAdminCoupons(dbCoupons);
-      setAppliedCoupon(dbCoupons[0]);
     }
 
     const dbSchedule = await getScheduleAPI();
