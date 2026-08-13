@@ -6,6 +6,7 @@ import AdminLoginModal from './components/common/AdminLoginModal';
 import AdminDashboardModal from './components/common/AdminDashboardModal';
 import LandingHero from './components/hero/LandingHero';
 import ScheduleSection from './components/schedule/ScheduleSection';
+import TeamGallerySection from './components/team/TeamGallerySection';
 import TeamForm from './components/form/TeamForm';
 import EventCouponSelection from './components/events/EventCouponSelection';
 import TicketPass from './components/pass/TicketPass';
@@ -272,6 +273,9 @@ export default function App() {
             <>
               <LandingHero onStartRegistration={handleStartRegistration} />
               
+              {/* Core E-Cell Organizing Team Photo Showcase Gallery */}
+              <TeamGallerySection />
+
               {/* Dynamic Animated Schedule Section (MongoDB & Admin Managed) */}
               <ScheduleSection scheduleCards={scheduleCards} />
             </>
