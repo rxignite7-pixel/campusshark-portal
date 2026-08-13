@@ -11,7 +11,7 @@ export default function BackgroundCarousel() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentIdx((prev) => (prev + 1) % BACKGROUND_IMAGES.length);
-    }, 6000); // Swipe every 6 seconds
+    }, 5000); // Swipe every 5 seconds
 
     return () => clearInterval(timer);
   }, []);
@@ -43,17 +43,17 @@ export default function BackgroundCarousel() {
               height: '100%',
               backgroundImage: `url(${imgSrc})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center top',
-              opacity: isActive ? 0.22 : 0,
-              transform: isActive ? 'scale(1.05)' : 'scale(1)',
-              transition: 'opacity 1.8s ease-in-out, transform 8s ease-out',
-              filter: 'blur(3px) brightness(0.7)'
+              backgroundPosition: 'center center',
+              opacity: isActive ? 0.45 : 0,
+              transform: isActive ? 'scale(1.04)' : 'scale(1)',
+              transition: 'opacity 1.5s ease-in-out, transform 6s ease-out',
+              filter: 'brightness(0.75) contrast(1.05)'
             }}
           />
         );
       })}
 
-      {/* Dark Ambient Masking Overlay to Protect Legibility & Theme */}
+      {/* Ambient Theme Gradient Mask */}
       <div
         style={{
           position: 'absolute',
@@ -61,7 +61,7 @@ export default function BackgroundCarousel() {
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'radial-gradient(circle at 50% 30%, rgba(13, 18, 30, 0.7) 0%, rgba(13, 18, 30, 0.94) 80%)'
+          background: 'linear-gradient(180deg, rgba(13, 18, 30, 0.75) 0%, rgba(13, 18, 30, 0.88) 50%, rgba(13, 18, 30, 0.95) 100%)'
         }}
       />
     </div>

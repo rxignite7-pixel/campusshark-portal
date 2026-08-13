@@ -23,7 +23,7 @@ export default function LandingHero({ onStartRegistration }) {
 
       <div className="hero-actions">
         <button className="btn-primary" onClick={onStartRegistration} style={{ cursor: 'pointer' }}>
-          <span>Launch Your Startup Team</span>
+          <span>Register Startup Member</span>
           <ArrowRight size={22} />
         </button>
       </div>
